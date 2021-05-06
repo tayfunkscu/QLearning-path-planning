@@ -1,6 +1,7 @@
 import numpy as np
 import pygame
 from time import time, sleep
+import matplotlib.pyplot as plt
 from random import randint as r
 import random
 import pickle
@@ -8,10 +9,10 @@ import sys
 
 alpha = 0.01
 gamma = 0.9
-epsilon = 0
+epsilon = 0.25
 basX = 5
 basY = 5
-n = 50
+n = 15
 csize = 15
 scrx = n * csize
 scry = n * csize
@@ -26,11 +27,13 @@ colors = [
 
 reward = np.zeros((n, n))
 obstacles = []
-penalities = 200
+penalities = 20
 
 Q = np.zeros((n ** 2, 4))
 actions = {"up": 0, "down": 1, "left": 2, "right": 3}
 states = {}
+sumOfRewards = []
+temp = 0
 
 
 def settings():
@@ -51,9 +54,9 @@ def settings():
     for i in range(n):
         for j in range(n):
             if reward[i, j] == 0:
-                reward[i, j] == 3
+                reward[i, j] = -0.1
 
-    reward[agent_starting_position[0], agent_starting_position[1]] = 0
+    #reward[agent_starting_position[0], agent_starting_position[1]] = 0
 
     k = 0
     for i in range(n):
@@ -150,7 +153,7 @@ def select_action(current_state):
 
 
 def episode():
-    global current_pos, epsilon, agent_starting_position
+    global current_pos, epsilon, agent_starting_position, temp, sumOfRewards
     current_state = states[(current_pos[0], current_pos[1])]
     action = select_action(current_state)
     if action == 0:
@@ -164,13 +167,21 @@ def episode():
 
     new_state = states[(current_pos[0], current_pos[1])]
     if new_state not in obstacles:
-        Q[current_state, action] = reward[current_pos[0],
-                                          current_pos[1]] + gamma * np.max(Q[new_state])
+        Q[current_state, action] += (reward[current_pos[0], current_pos[1]] + gamma*(
+            np.max(Q[new_state])) - Q[current_state, action])
+        """ Q[current_state, action] = reward[current_pos[0],
+                                          current_pos[1]] + gamma * np.max(Q[new_state]) """
+        temp += reward[current_pos[0], current_pos[1]]
     else:
-        Q[current_state, action] = reward[current_pos[0],
-                                          current_pos[1]] + gamma * np.max(Q[new_state])
+        Q[current_state, action] += (reward[current_pos[0], current_pos[1]] + gamma*(
+            np.max(Q[new_state])) - Q[current_state, action])
+        """ Q[current_state, action] = reward[current_pos[0],
+                                          current_pos[1]] + gamma * np.max(Q[new_state]) """
+        temp += reward[current_pos[0], current_pos[1]]
+        sumOfRewards.append(temp)
+        temp = 0
         current_pos = [agent_starting_position[0], agent_starting_position[1]]
-        epsilon -= 1e-3
+        epsilon -= 1e-4
 
 
 current_pos = [0, 0]
@@ -178,6 +189,7 @@ current_pos = [0, 0]
 selection = True
 
 while True:
+    print(epsilon)
     screen.fill(background)
     layout()
     pygame.draw.circle(
@@ -204,6 +216,12 @@ while True:
                 current_pos = [agent_starting_position[0],
                                agent_starting_position[1]]
                 settings()
+                print(reward)
+        if event.type == pygame.KEYDOWN:
+            plt.plot(sumOfRewards)
+            plt.xlabel("Episodes")
+            plt.ylabel("Total Reward per Episode")
+            plt.show()
 
     pygame.display.flip()
     if selection is False:
