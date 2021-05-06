@@ -9,8 +9,9 @@ import sys
 alpha = 0.01
 gamma = 0.9
 epsilon = 0
-
-n = 15
+basX = 5
+basY = 5
+n = 50
 csize = 15
 scrx = n * csize
 scry = n * csize
@@ -25,7 +26,7 @@ colors = [
 
 reward = np.zeros((n, n))
 obstacles = []
-penalities = 10
+penalities = 200
 
 Q = np.zeros((n ** 2, 4))
 actions = {"up": 0, "down": 1, "left": 2, "right": 3}
@@ -44,6 +45,8 @@ def settings():
             reward[i, j] = -5
             penalities -= 1
             obstacles.append(n * i + j)
+
+    obstacles.append(n * target[0] + target[1])
 
     for i in range(n):
         for j in range(n):
@@ -140,7 +143,8 @@ def select_action(current_state):
             possible_actions.append(m - 100)
 
         action = random.choice(
-            [i for i, a in enumerate(possible_actions) if a == max(possible_actions)]
+            [i for i, a in enumerate(possible_actions)
+             if a == max(possible_actions)]
         )
         return action
 
@@ -160,26 +164,18 @@ def episode():
 
     new_state = states[(current_pos[0], current_pos[1])]
     if new_state not in obstacles:
-        Q[current_state, action] = reward[
-            current_pos[0], current_pos[1]
-        ] + gamma * np.max(Q[new_state])
+        Q[current_state, action] = reward[current_pos[0],
+                                          current_pos[1]] + gamma * np.max(Q[new_state])
     else:
-        Q[current_state, action] = reward[
-            current_pos[0], current_pos[1]
-        ] + gamma * np.max(Q[new_state])
-        current_pos = agent_starting_position
+        Q[current_state, action] = reward[current_pos[0],
+                                          current_pos[1]] + gamma * np.max(Q[new_state])
+        current_pos = [agent_starting_position[0], agent_starting_position[1]]
         epsilon -= 1e-3
 
 
-agent_starting_position = list(
-    map(int, input("Agent starting position(row,col): ").split(","))
-)
-
-current_pos = agent_starting_position
-
-target = list(map(int, input("Target position(row,col): ").split(",")))
-
-settings()
+current_pos = [0, 0]
+# settings()
+selection = True
 
 while True:
     screen.fill(background)
@@ -191,11 +187,24 @@ while True:
         4,
         0,
     )
+
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             pygame.quit()
             sys.exit()
-    pygame.display.flip()
-    episode()
+        if selection:
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:  # Left click
+                cor_y, cor_x = event.pos
+                agent_starting_position = [int(cor_x / 15), int(cor_y / 15)]
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 3:  # Right click
+                cor_y, cor_x = event.pos
+                target = [int(cor_x / 15), int(cor_y / 15)]
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 2:
+                selection = False
+                current_pos = [agent_starting_position[0],
+                               agent_starting_position[1]]
+                settings()
 
-print(epsilon)
+    pygame.display.flip()
+    if selection is False:
+        episode()
